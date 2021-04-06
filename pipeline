@@ -1,0 +1,33 @@
+node {
+    stage("Git Clone"){
+
+        git credentialsId: 'GIT_HUB_CREDENTIAL', url: 'https://github.com/trungvo11/springboot.git'
+    }
+
+    stage('Gradle Build') {
+
+       sh './gradlew build'
+
+    } 
+    stage("Docker build"){
+        sh 'docker version'
+        sh 'docker build -t jhooq-docker-demo .'
+        sh 'docker image list'
+        sh 'docker tag jhooq-docker-demo soilangtu1993/jhooq-docker-demo:jhooq-docker-demo'
+    } 
+    stage("Docker Login"){
+        withCredentials([string(credentialsId: 'DOCKER_HUB_PASSWORD', variable: 'PASSWORD')]) {
+            sh 'docker login -u soilangtu1993 -p $PASSWORD'
+        }
+    } 
+    stage("Push Image to Docker Hub"){
+        sh 'docker push  soilangtu1993/jhooq-docker-demo:jhooq-docker-demo'
+    }
+    stage('Put k8s-spring-boot-deployment.yml onto k8smaster') {
+            steps {
+                withAWS(credentials: 'devops-01', region: 'ap-southeast-1') {
+                    sh 'kubectl apply -f deployment.yaml'
+                }
+            }
+        }
+}
